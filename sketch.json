@@ -1,0 +1,6 @@
+{
+  "cpu": {
+    "fqbn": "esp32:esp32:node32s",
+    "port": "/dev/ttyUSB0"
+  }
+}
