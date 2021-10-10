@@ -27,17 +27,17 @@ void configModeCallback(WiFiManager *myWiFiManager) {
   Serial.println(myWiFiManager->getConfigPortalSSID());
 }
 
-char *randCode() {
-  static char randString[4] = "";
-
-  for (int i = 0; i < 4; i++) {
-    byte randomValue = random(0, 36);
-    char letter = randomValue + 'a';
-    if (randomValue > 26)
-      letter = (randomValue - 26) + '0';
-    randString[i] = letter;
+void gen_random(char *s, size_t len) {
+  for (size_t i = 0; i < len; ++i) {
+    int randomChar = random(0, 61);
+    if (randomChar < 26)
+      s[i] = 'a' + randomChar;
+    else if (randomChar < 26 + 26)
+      s[i] = 'A' + randomChar - 26;
+    else
+      s[i] = '0' + randomChar - 26 - 26;
   }
-  return randString;
+  s[len] = 0;
 }
 
 void setup() {
@@ -123,10 +123,13 @@ void loop() {
       Serial.println("Adding random code");
       delay(10000);
       String uid = auth.token.uid.c_str();
-      char *code = randCode();
+
+      char code[5] = "";
+      gen_random(code, 4);
       char codePath[] = "/cameras/codes/";
       char fullCodePath[20];
       sprintf(fullCodePath, "%s%s", codePath, code);
+
       Serial.println(fullCodePath);
       delay(10000);
 
