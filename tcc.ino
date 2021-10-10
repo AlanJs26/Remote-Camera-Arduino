@@ -28,6 +28,7 @@ void configModeCallback(WiFiManager *myWiFiManager) {
 }
 
 void gen_random(char *s, size_t len) {
+
   for (size_t i = 0; i < len; ++i) {
     int randomChar = random(0, 61);
     if (randomChar < 26)
