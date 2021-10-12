@@ -10,7 +10,7 @@
 WiFiManager wifiManager;
 
 #define API_KEY "AIzaSyAcT5oGP6ZFtJ5sHXsqxVa6DwgwxBzVexw"
-#define DATABASE_URL "remotecamera-6f583-default-rtdb"
+#define DATABASE_URL "remotecamera-6f583-default-rtdb.firebaseio.com"
 #define DATABASE_SECRET "zC7bJfF0iGMQ1IPKq5bYj2WOrAx9UF9j9ghzaoTq"
 
 FirebaseData fbdo;
@@ -18,7 +18,7 @@ FirebaseData stream;
 FirebaseAuth auth;
 
 FirebaseConfig config;
-FirebaseJson json;
+/*FirebaseJson json;*/
 
 bool signupOK = false;
 
@@ -82,13 +82,13 @@ void setup() {
       Serial.printf("%s\n", config.signer.signupError.message.c_str());
     }
 
-    /*String uid = auth.token.uid.c_str();*/
-    /*String connectedWithPath = "/users/" + uid + "/connectedWith";*/
-    /*Serial.println(connectedWithPath);*/
+    String uid = auth.token.uid.c_str();
+    String connectedWithPath = "/users/" + uid + "/connectedWith";
+    Serial.printf("listening to %s\n", connectedWithPath.c_str());
+    Serial.println();
 
-    /*if (!Firebase.beginStream(stream, connectedWithPath))*/
-    /*Serial.printf("stream begin error, %s\n\n",
-     * stream.errorReason().c_str());*/
+    if (!Firebase.beginStream(stream, connectedWithPath.c_str()))
+      Serial.printf("stream begin error, %s\n\n", stream.errorReason().c_str());
 
   } else {
     Serial.println("Falha ao conectar. Reiniciando...");
@@ -96,7 +96,6 @@ void setup() {
     ESP.restart();
   }
   Firebase.begin(&config, &auth);
-  Serial.println("exited");
 }
 
 // 0 - nothing
@@ -121,15 +120,16 @@ void loop() {
   } else if (WiFi.status() == WL_CONNECTED && signupOK && Firebase.ready()) {
     digitalWrite(26, HIGH);
 
-    /*delay(10000);*/
-    /*if (stream.streamTimeout()) {*/
-    /*Serial.println("stream timed out, resuming...\n");*/
-    /*delay(10000);*/
+    if (!Firebase.readStream(stream))
+      Serial.printf("stream read error, %s\n\n", stream.errorReason().c_str());
 
-    /*if (!stream.httpConnected())*/
-    /*Serial.printf("error code: %d, reason: %s\n\n", stream.httpCode(),*/
-    /*stream.errorReason().c_str());*/
-    /*}*/
+    if (stream.streamTimeout()) {
+      Serial.println("stream timed out, resuming...\n");
+
+      if (!stream.httpConnected())
+        Serial.printf("error code: %d, reason: %s\n\n", stream.httpCode(),
+                      stream.errorReason().c_str());
+    }
 
     if (state == 1) {
       Serial.println("Adding random code");
@@ -142,41 +142,33 @@ void loop() {
       char fullCodePath[20];
       sprintf(fullCodePath, "%s/%s", codePath, code);
 
-      /*Serial.println(fullCodePath);*/
-      Serial.printf("\"%s\": \"%s\"\n", fullCodePath, uid.c_str());
-      /*delay(10000);*/
+      Serial.printf("\"%s\": \"%s\"", fullCodePath, uid.c_str());
 
-      /*json.set(code, uid.c_str());*/
-      json.set("alan", "joselegal");
-
-      /*Firebase.setString(fbdo, "/cameras/codes/bq3w", uid.c_str());*/
-      /*Firebase.setString(fbdo, "/cameras/codes/bq3w", "teste");*/
-      if (Firebase.pushJSON(fbdo, "/cameras/codes", json)) {
-        Serial.println("nice... i think.");
+      if (Firebase.setString(fbdo, fullCodePath, uid.c_str())) {
+        Serial.println(" --> Success");
+        Serial.println();
       } else {
         Serial.println(fbdo.errorReason());
       }
       state = 2;
     } else if (state == 2) {
-      /*if (stream.streamAvailable()) {*/
-      /*Serial.printf("stream path, %s\nevent path, %s\ndata type, %s\nevent "*/
-      /*"type, %s\n\n",*/
-      /*stream.streamPath().c_str(), stream.dataPath().c_str(),*/
-      /*stream.dataType().c_str(), stream.eventType().c_str());*/
-      /*printResult(stream); // see addons/RTDBHelper.h*/
-      /*Serial.println();*/
+      if (stream.streamAvailable()) {
+        Serial.printf("stream path, %s\nevent path, %s\ndata type, %s\nevent "
+                      "type, %s\n\n",
+                      stream.streamPath().c_str(), stream.dataPath().c_str(),
+                      stream.dataType().c_str(), stream.eventType().c_str());
+        printResult(stream); // see addons/RTDBHelper.h
+        Serial.println();
 
-      /*// This is the size of stream payload received (current and max value)*/
-      /*// Max payload size is the payload size under the stream path since
-       * the*/
-      /*// stream connected and read once and will not update until stream*/
-      /*// reconnection takes place. This max value will be zero as no payload*/
-      /*// received in case of ESP8266 which BearSSL reserved Rx buffer size
-       * is*/
-      /*// less than the actual stream payload.*/
-      /*Serial.printf("Received stream payload size: %d (Max. %d)\n\n",*/
-      /*stream.payloadLength(), stream.maxPayloadLength());*/
-      /*}*/
+        // This is the size of stream payload received (current and max value)
+        // Max payload size is the payload size under the stream path since the
+        // stream connected and read once and will not update until stream
+        // reconnection takes place. This max value will be zero as no payload
+        // received in case of ESP8266 which BearSSL reserved Rx buffer size is
+        // less than the actual stream payload.
+        Serial.printf("Received stream payload size: %d (Max. %d)\n\n",
+                      stream.payloadLength(), stream.maxPayloadLength());
+      }
     }
 
     // not connected at all

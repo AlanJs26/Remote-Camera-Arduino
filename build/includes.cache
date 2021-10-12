@@ -1,0 +1,147 @@
+[
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/cores/esp32"
+  },
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/variants/node32s"
+  },
+  {
+    "Sourcefile": "/home/alan/Documentos/Codes/Arduino/tcc/build/sketch/tcc.ino.cpp",
+    "Include": "HTTPClient.h",
+    "Includepath": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/HTTPClient/src"
+  },
+  {
+    "Sourcefile": "/home/alan/Documentos/Codes/Arduino/tcc/build/sketch/tcc.ino.cpp",
+    "Include": "WiFiClient.h",
+    "Includepath": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFi/src"
+  },
+  {
+    "Sourcefile": "/home/alan/Documentos/Codes/Arduino/tcc/build/sketch/tcc.ino.cpp",
+    "Include": "WiFiClientSecure.h",
+    "Includepath": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFiClientSecure/src"
+  },
+  {
+    "Sourcefile": "/home/alan/Documentos/Codes/Arduino/tcc/build/sketch/tcc.ino.cpp",
+    "Include": "DNSServer.h",
+    "Includepath": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/DNSServer---esp32-master/src"
+  },
+  {
+    "Sourcefile": "/home/alan/Documentos/Codes/Arduino/tcc/build/sketch/tcc.ino.cpp",
+    "Include": "WebServer.h",
+    "Includepath": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WebServer-esp32-master/src"
+  },
+  {
+    "Sourcefile": "/home/alan/Documentos/Codes/Arduino/tcc/build/sketch/tcc.ino.cpp",
+    "Include": "WiFiManager.h",
+    "Includepath": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WIFIMANAGER-ESP32-master"
+  },
+  {
+    "Sourcefile": "/home/alan/Documentos/Codes/Arduino/tcc/build/sketch/tcc.ino.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/HTTPClient/src/HTTPClient.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFi/src/ETH.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFi/src/WiFi.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFi/src/WiFiAP.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFi/src/WiFiClient.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFi/src/WiFiGeneric.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFi/src/WiFiMulti.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFi/src/WiFiSTA.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFi/src/WiFiScan.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFi/src/WiFiServer.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFi/src/WiFiUdp.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFiClientSecure/src/WiFiClientSecure.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WiFiClientSecure/src/ssl_client.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/DNSServer---esp32-master/src/DNSServer.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WebServer-esp32-master/src/Parsing.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WebServer-esp32-master/src/WebServer.cpp",
+    "Include": "FS.h",
+    "Includepath": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/FS/src"
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WebServer-esp32-master/src/WebServer.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/WIFIMANAGER-ESP32-master/WiFiManager.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/FS/src/FS.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/alan/.arduino15/packages/esp32/hardware/esp32/2.0.0/libraries/FS/src/vfs_api.cpp",
+    "Include": "",
+    "Includepath": null
+  }
+]
