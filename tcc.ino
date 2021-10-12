@@ -54,12 +54,8 @@ void setup() {
   wifiManager.setSaveConfigCallback(saveConfigCallback);
 
   Serial.println("Abertura Portal");
-  wifiManager.autoConnect();
-  if (!wifiManager.startConfigPortal("ESP32-CONFIG", "12345678")) {
-    Serial.println("Falha ao conectar. Reiniciando...");
-    delay(20000);
-    ESP.restart();
-  } else {
+  if (wifiManager.autoConnect() ||
+      wifiManager.startConfigPortal("ESP32-CONFIG", "12345678")) {
     Serial.println("Conectado na Rede!!!");
 
     /*Serial.println("Firebase Client v%s\n\n", FIREBASE_CLIENT_VERSION);*/
@@ -77,14 +73,20 @@ void setup() {
 
     Firebase.begin(&config, &auth);
 
-    String uid = auth.token.uid.c_str();
-    String connectedWithPath = "/users/" + uid + "/connectedWith";
-    Serial.println(connectedWithPath);
-    delay(10000);
+    /*String uid = auth.token.uid.c_str();*/
+    /*String connectedWithPath = "/users/" + uid + "/connectedWith";*/
+    /*Serial.println(connectedWithPath);*/
 
-    if (!Firebase.beginStream(stream, connectedWithPath))
-      Serial.printf("stream begin error, %s\n\n", stream.errorReason().c_str());
+    /*if (!Firebase.beginStream(stream, connectedWithPath))*/
+    /*Serial.printf("stream begin error, %s\n\n",
+     * stream.errorReason().c_str());*/
+
+  } else {
+    Serial.println("Falha ao conectar. Reiniciando...");
+    delay(20000);
+    ESP.restart();
   }
+  Serial.println("exited");
 }
 
 // 0 - nothing
@@ -110,10 +112,10 @@ void loop() {
     digitalWrite(26, HIGH);
     Serial.println("before timeout");
 
-    delay(10000);
+    /*delay(10000);*/
     if (stream.streamTimeout()) {
       Serial.println("stream timed out, resuming...\n");
-      delay(10000);
+      /*delay(10000);*/
 
       if (!stream.httpConnected())
         Serial.printf("error code: %d, reason: %s\n\n", stream.httpCode(),
@@ -122,7 +124,7 @@ void loop() {
 
     if (state == 1) {
       Serial.println("Adding random code");
-      delay(10000);
+      /*delay(10000);*/
       String uid = auth.token.uid.c_str();
 
       char code[5] = "";
@@ -132,7 +134,7 @@ void loop() {
       sprintf(fullCodePath, "%s%s", codePath, code);
 
       Serial.println(fullCodePath);
-      delay(10000);
+      /*delay(10000);*/
 
       Firebase.setString(fbdo, fullCodePath, uid.c_str());
       state = 2;
@@ -157,8 +159,13 @@ void loop() {
     }
 
     // not connected at all
-  } else {
+  } else if (WiFi.status() != WL_CONNECTED) {
     digitalWrite(26, LOW);
     wifiManager.autoConnect();
+  } else {
+    delay(300);
+    Serial.println(Firebase.ready());
+    Serial.println(WiFi.status());
+    Serial.println(signupOK);
   }
 }
