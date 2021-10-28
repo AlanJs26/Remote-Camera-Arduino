@@ -16,7 +16,6 @@ WiFiManager wifiManager;
 FirebaseData fbdo;
 FirebaseData streamConnectedWith;
 FirebaseData streamTestAlive;
-/*FirebaseData fbdo;*/
 FirebaseAuth auth;
 
 FirebaseConfig config;
@@ -37,6 +36,7 @@ int upDir    = 0;
 int downDir  = 0;
 
 unsigned long updateMillis = 0;
+unsigned long testAliveMillis = 0;
 
 bool signupOK = false;
 
@@ -205,22 +205,26 @@ void loop() {
     digitalWrite(26, HIGH);
 
     /* Handle Stream Errors */
-    if (!Firebase.readStream(streamConnectedWith))
+    if (state<=2 && !Firebase.readStream(streamConnectedWith))
       Serial.printf("streamConnectedWith read error, %s\n\n", streamConnectedWith.errorReason().c_str());
-    if (!Firebase.readStream(streamTestAlive))
-      Serial.printf("streamTestAlive read error, %s\n\n\r", streamTestAlive.errorReason().c_str());
 
-    if (streamConnectedWith.streamTimeout()) {
+    if (state<=2 && streamConnectedWith.streamTimeout()) {
       Serial.println("streamConnectedWith timed out, resuming...\n");
       if (!streamConnectedWith.httpConnected())
         Serial.printf("error code: %d, reason: %s\n\n\r", streamConnectedWith.httpCode(),
                       streamConnectedWith.errorReason().c_str());
     }
+
+    if(millis() - testAliveMillis >= 3000){
+    if (!Firebase.readStream(streamTestAlive))
+      Serial.printf("streamTestAlive read error, %s\n\n\r", streamTestAlive.errorReason().c_str());
+
     if (streamTestAlive.streamTimeout()) {
       Serial.println("streamTestAlive timed out, resuming...\n");
       if (!streamTestAlive.httpConnected())
         Serial.printf("error code: %d, reason: %s\n\n\r", streamTestAlive.httpCode(),
                       streamTestAlive.errorReason().c_str());
+    }
     }
 
     if (state == 1) {
@@ -300,12 +304,14 @@ void loop() {
       }
     } else if(state == 4){
       if (Firebase.beginStream(fbdo, directionPath.c_str())){
+        Firebase.endStream(streamConnectedWith);
         state = 3;
       }else {
         Serial.printf("fbdo begin error, %s\n\r", fbdo.errorReason().c_str());
       }
 
     }else if (state == 3){
+
       if (!Firebase.readStream(fbdo))
         Serial.printf("fbdo read error, %s\n\r", fbdo.errorReason().c_str());
       if (fbdo.streamTimeout()) {
@@ -315,39 +321,26 @@ void loop() {
               fbdo.errorReason().c_str());
       }
 
-      if(millis() - updateMillis >= 1000){
-        updateMillis = millis();
-        /* if (Firebase.getInt(fbdo, currentPercentagePath.c_str())) { */
-        if(rightDir && currentPercentage+10 <= 100){
-          currentPercentage+=10;
+      if(millis() - testAliveMillis >= 10000){
+
+        if (streamTestAlive.streamAvailable()) {
+
+          String data = streamTestAlive.to<String>();
+          String streamPath = streamTestAlive.streamPath();
+          String uid = auth.token.uid.c_str();
+
+          if(data != "null"){
+            Serial.println("\n--------------------");
+            Serial.printf("Received stream payload size: %d (Max. %d) -- %s\n",
+                streamTestAlive.payloadLength(), streamTestAlive.maxPayloadLength(), streamPath.c_str());
+
+            Serial.println();
+            Serial.println(data);
+            Serial.println("--------------------\n");
+          }
+
+          updateReconnectValidUntil();
         }
-        if(leftDir && currentPercentage-10 >= 0){
-          currentPercentage-=10;
-        }
-
-        if (Firebase.setInt(fbdo, currentPercentage, currentPercentagePath.c_str())) {
-          /* fbdo.to<int>(); */
-          Serial.println(currentPercentage);
-        }
-      }
-
-      if (streamTestAlive.streamAvailable()) {
-
-        String data = streamTestAlive.to<String>();
-        String streamPath = streamTestAlive.streamPath();
-        String uid = auth.token.uid.c_str();
-
-        if(data != "null"){
-          Serial.println("\n--------------------");
-          Serial.printf("Received stream payload size: %d (Max. %d) -- %s\n",
-              streamTestAlive.payloadLength(), streamTestAlive.maxPayloadLength(), streamPath.c_str());
-
-          Serial.println();
-          Serial.println(data);
-          Serial.println("--------------------\n");
-        }
-
-        updateReconnectValidUntil();
       }
 
       // listen for directions
@@ -413,6 +406,29 @@ void loop() {
           /*Serial.printf("Array index %d, Null Val: %s\n", i, result.to<String>().c_str());*/
           /*}*/
         }
+      }
+
+      if(millis() - updateMillis >= 200){
+        updateMillis = millis();
+        /* if (Firebase.getInt(fbdo, currentPercentagePath.c_str())) { */
+        if(rightDir == 1 && currentPercentage+10 <= 100){
+          currentPercentage+=1;
+        }
+        if(leftDir == 1 && currentPercentage-10 >= 0){
+          currentPercentage-=1;
+        }
+
+        if(leftDir == 1 || rightDir == 1){
+          if (Firebase.setInt(streamTestAlive, currentPercentagePath.c_str(), currentPercentage)) {
+            Serial.print(currentPercentagePath + " --> ");
+            Serial.println(currentPercentage);
+            testAliveMillis = millis();
+          }else{
+            Serial.println(streamTestAlive.errorReason());
+            Serial.println("\r\n");
+          }
+        }
+
       }
 
     }
