@@ -1,7 +1,0 @@
-#line 1 "/home/alan/Documentos/Codes/Arduino/tcc/sketch.json"
-{
-  "cpu": {
-    "fqbn": "esp32:esp32:node32s",
-    "port": "/dev/ttyUSB0"
-  }
-}
