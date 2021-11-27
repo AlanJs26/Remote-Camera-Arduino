@@ -3,9 +3,13 @@
 #include <HTTPClient.h>
 #include <WebServer.h>
 #include <WiFiManager.h>
-#include <addons/RTDBHelper.h>
-#include <addons/TokenHelper.h>
+/* #include <addons/RTDBHelper.h> */
+/* #include <addons/TokenHelper.h> */
 
+#include <Servo.h>
+
+static const int servoPin = 13;
+Servo servo1;
 
 WiFiManager wifiManager;
 
@@ -109,8 +113,12 @@ void gen_random(char *s, size_t len) {
 
 void setup() {
 
+
   Serial.begin(115200);
   Serial.println();
+  
+  /* Setup servo motors */
+  servo1.attach(servoPin);
 
   pinMode(26, OUTPUT);
 
@@ -216,15 +224,15 @@ void loop() {
     }
 
     if(millis() - testAliveMillis >= 3000){
-    if (!Firebase.readStream(streamTestAlive))
-      Serial.printf("streamTestAlive read error, %s\n\n\r", streamTestAlive.errorReason().c_str());
+      if (!Firebase.readStream(streamTestAlive))
+        Serial.printf("streamTestAlive read error, %s\n\n\r", streamTestAlive.errorReason().c_str());
 
-    if (streamTestAlive.streamTimeout()) {
-      Serial.println("streamTestAlive timed out, resuming...\n");
-      if (!streamTestAlive.httpConnected())
-        Serial.printf("error code: %d, reason: %s\n\n\r", streamTestAlive.httpCode(),
-                      streamTestAlive.errorReason().c_str());
-    }
+      if (streamTestAlive.streamTimeout()) {
+        Serial.println("streamTestAlive timed out, resuming...\n");
+        if (!streamTestAlive.httpConnected())
+          Serial.printf("error code: %d, reason: %s\n\n\r", streamTestAlive.httpCode(),
+              streamTestAlive.errorReason().c_str());
+      }
     }
 
     if (state == 1) {
@@ -411,10 +419,10 @@ void loop() {
       if(millis() - updateMillis >= 200){
         updateMillis = millis();
         /* if (Firebase.getInt(fbdo, currentPercentagePath.c_str())) { */
-        if(rightDir == 1 && currentPercentage+10 <= 100){
+        if(rightDir == 1 && currentPercentage+1 <= 100){
           currentPercentage+=1;
         }
-        if(leftDir == 1 && currentPercentage-10 >= 0){
+        if(leftDir == 1 && currentPercentage-1 >= 0){
           currentPercentage-=1;
         }
 
@@ -425,13 +433,15 @@ void loop() {
             testAliveMillis = millis();
           }else{
             Serial.println(streamTestAlive.errorReason());
-            Serial.println("\r\n");
+            Serial.println("\r");
           }
         }
 
       }
 
+      servo1.write((int)(currentPercentage*1.8));
     }
+
 
     // not connected at all
   } else if (WiFi.status() != WL_CONNECTED) {
