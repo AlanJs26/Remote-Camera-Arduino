@@ -29,15 +29,19 @@ String connectedUid;
 String connectedName;
 String connectedWithPath;
 String currentPercentagePath;
+String horizontalPercentagePath;
 String testAlivePath;
 String directionPath;
 
 int currentPercentage = 0;
+int horizontalPercentage = 0;
 
 int rightDir = 0;
 int leftDir  = 0;
 int upDir    = 0;
 int downDir  = 0;
+int horizontalRightDir = 0;
+int horizontalLeftDir  = 0;
 
 unsigned long updateMillis = 0;
 unsigned long testAliveMillis = 0;
@@ -302,6 +306,7 @@ void loop() {
                   /*Serial.printf("fbdo begin error, %s\n\r", fbdo.errorReason().c_str());*/
 
                 currentPercentagePath = "/users/" + data + "/currentPercentage";
+                horizontalPercentagePath = "/users/" + data + "/horizontalPercentage";
                 updateReconnectValidUntil();
                 state = 4;
               }
@@ -362,17 +367,24 @@ void loop() {
           /*String uid = auth.token.uid.c_str();*/
           const char* rawitems = direction->raw();
 
-          FirebaseJsonData directions[4];
+          FirebaseJsonData directions[6];
 
           direction->get(directions[0], 0);
           direction->get(directions[1], 1);
           direction->get(directions[2], 2);
           direction->get(directions[3], 3);
+          direction->get(directions[4], 4);
+          direction->get(directions[5], 5);
           //parse or print the array here
           Serial.println();
           Serial.println("Iterate Search result item...");
           Serial.println("-------------------------------");
           Serial.println(rawitems);
+
+          // 1 0 0 0 -- up
+          // 0 1 0 0 -- right
+          // 0 0 1 0 -- left
+          // 0 0 0 1 -- down
 
           rightDir = 0;
           leftDir = 0;
@@ -381,6 +393,25 @@ void loop() {
           }
           if(directions[2].to<int>() == 1 && directions[1].to<int>() == 0){
             leftDir = 1;
+          }
+
+          upDir = 0;
+          downDir = 0;
+          if(directions[0].to<int>() == 1){
+            upDir = 1;
+          }
+          if(directions[3].to<int>() == 1 && directions[0].to<int>() == 0){
+            downDir = 1;
+          }
+
+
+          horizontalRightDir = 0;
+          horizontalLeftDir = 0;
+          if(directions[4].to<int>() == 1){
+            horizontalRightDir = 1;
+          }
+          if(directions[5].to<int>() == 1 && directions[4].to<int>() == 0){
+            horizontalLeftDir = 1;
           }
 
           for(int i = 0; i<4; i++){
@@ -419,6 +450,8 @@ void loop() {
       if(millis() - updateMillis >= 200){
         updateMillis = millis();
         /* if (Firebase.getInt(fbdo, currentPercentagePath.c_str())) { */
+        bool shouldResetTestAliveMillis = false;
+        // current percentage
         if(rightDir == 1 && currentPercentage+1 <= 100){
           currentPercentage+=1;
         }
@@ -430,11 +463,34 @@ void loop() {
           if (Firebase.setInt(streamTestAlive, currentPercentagePath.c_str(), currentPercentage)) {
             Serial.print(currentPercentagePath + " --> ");
             Serial.println(currentPercentage);
-            testAliveMillis = millis();
+            shouldResetTestAliveMillis = true;
           }else{
             Serial.println(streamTestAlive.errorReason());
             Serial.println("\r");
           }
+        }
+
+        // horizontal percentage
+        if(horizontalRightDir == 1 && horizontalPercentage+1 <= 100){
+          horizontalPercentage+=1;
+        }
+        if(horizontalLeftDir == 1 && horizontalPercentage-1 >= 0){
+          horizontalPercentage-=1;
+        }
+
+        if(horizontalLeftDir == 1 || horizontalRightDir == 1){
+          if (Firebase.setInt(streamTestAlive, horizontalPercentagePath.c_str(), horizontalPercentage)) {
+            Serial.print(horizontalPercentagePath + " --> ");
+            Serial.println(horizontalPercentage);
+            shouldResetTestAliveMillis = true;
+          }else{
+            Serial.println(streamTestAlive.errorReason());
+            Serial.println("\r");
+          }
+        }
+
+        if(shouldResetTestAliveMillis){
+            testAliveMillis = millis();
         }
 
       }
