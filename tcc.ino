@@ -6,10 +6,37 @@
 /* #include <addons/RTDBHelper.h> */
 /* #include <addons/TokenHelper.h> */
 
+// Configuração do servo motor
+
 #include <Servo.h>
 
 static const int servoPin = 13;
 Servo servo1;
+
+// Pinos para o motor de passo
+// https://www.curtocircuito.com.br/blog/Categoria%20Arduino/controle-de-motor-de-passo-nema-driver-a4988
+// Os pinos ms1 ms2 ms3 controlam o tamanho de cada passo
+// ms1 - HIGH
+// ms2 - HIGH     para tamanho de 1/8 por passo (total de 1600 passos por revolução)
+// ms3 - LOW
+// 
+// o pino RST precisa estar em HIGH para funcionar
+// o pino SLP quando em LOW ativa a função sleep de economia de energia (para o funcionamento normal, o pino precisa estar em HIGH)
+// o pino EN precisa estar em LOW para funcionar
+
+static const int directionPin = 18; // HIGH para sentido horário
+static const int stepPin = 19;
+
+static const int endSwitchRightPin = 16;
+static const int endSwitchLeftPin = 17;
+
+unsigned long stepMillis = 0;
+
+#define RIGHT true
+#define LEFT false
+
+bool currentDirection = RIGHT;
+bool activateStepperMotor = true;
 
 WiFiManager wifiManager;
 
@@ -115,6 +142,27 @@ void gen_random(char *s, size_t len) {
   s[len] = 0;
 }
 
+void step(bool stop, bool dir){
+  if(stop == true || digitalRead(endSwitchLeftPin) || digitalRead(endSwitchRightPin)){
+    stepMillis = millis();
+    return;
+  }
+
+  if(dir){
+    digitalWrite(directionPin, HIGH);
+  }else{
+    digitalWrite(directionPin, LOW);
+  }
+
+  if(millis() - stepMillis >= 2000) digitalWrite(stepPin, HIGH);
+
+  if(millis() - stepMillis >= 4000){
+    digitalWrite(stepPin, LOW);
+    stepMillis = millis();
+  }
+
+}
+
 void setup() {
 
 
@@ -124,20 +172,30 @@ void setup() {
   /* Setup servo motors */
   servo1.attach(servoPin);
 
+  // wifi state led
   pinMode(26, OUTPUT);
-
-  /*Directions pins*/
-  pinMode(16, OUTPUT);
-  pinMode(17, OUTPUT);
-  pinMode(18, OUTPUT);
-  pinMode(19, OUTPUT);
-
   digitalWrite(26, LOW);
 
-  digitalWrite(16, LOW);
-  digitalWrite(17, LOW);
-  digitalWrite(18, LOW);
-  digitalWrite(19, LOW);
+  /*Directions pins*/
+  /* pinMode(16, OUTPUT); */
+  /* pinMode(17, OUTPUT); */
+  /* pinMode(18, OUTPUT); */
+  /* pinMode(19, OUTPUT); */
+
+  /* setup stepper motor */
+  pinMode(directionPin, OUTPUT);
+  pinMode(stepPin, OUTPUT);
+  pinMode(endSwitchLeftPin, INPUT_PULLDOWN);
+  pinMode(endSwitchRightPin, INPUT_PULLDOWN);
+
+  digitalWrite(directionPin, HIGH);
+  digitalWrite(stepPin, LOW);
+
+
+  /* digitalWrite(16, LOW); */
+  /* digitalWrite(17, LOW); */
+  /* digitalWrite(18, LOW); */
+  /* digitalWrite(19, LOW); */
 
   wifiManager.setAPCallback(configModeCallback);
   wifiManager.setSaveConfigCallback(saveConfigCallback);
@@ -414,15 +472,15 @@ void loop() {
             horizontalLeftDir = 1;
           }
 
-          for(int i = 0; i<4; i++){
-            /*Serial.printf("%i ",directions[i].to<int>());*/
+          /* for(int i = 0; i<4; i++){ */
+            /* [>Serial.printf("%i ",directions[i].to<int>());<] */
 
-            if(directions[i].to<int>() == 1){
-              digitalWrite(16+i, HIGH);
-            }else{
-              digitalWrite(16+i, LOW);
-            }
-          }
+            /* if(directions[i].to<int>() == 1){ */
+              /* digitalWrite(16+i, HIGH); */
+            /* }else{ */
+              /* digitalWrite(16+i, LOW); */
+            /* } */
+          /* } */
           Serial.println();
           /*for (size_t i = 0; i < direction.size(); i++)*/
           /*{*/
@@ -473,9 +531,17 @@ void loop() {
         // horizontal percentage
         if(horizontalRightDir == 1 && horizontalPercentage+1 <= 100){
           horizontalPercentage+=1;
+          currentDirection = RIGHT;
+          activateStepperMotor = true;
         }
         if(horizontalLeftDir == 1 && horizontalPercentage-1 >= 0){
           horizontalPercentage-=1;
+          currentDirection = LEFT;
+          activateStepperMotor = true;
+        }
+
+        if(horizontalLeftDir == 0 && horizontalRightDir == 0){
+          activateStepperMotor = false;
         }
 
         if(horizontalLeftDir == 1 || horizontalRightDir == 1){
@@ -496,6 +562,7 @@ void loop() {
       }
 
       servo1.write((int)(currentPercentage*1.8));
+      step(!activateStepperMotor, currentDirection);
     }
 
 
