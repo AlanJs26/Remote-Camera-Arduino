@@ -10,8 +10,10 @@
 
 #include <Servo.h>
 
-static const int servoPin = 13;
-Servo servo1;
+static const int servoXPin = 13;
+static const int servoYPin = 12;
+Servo servoX;
+Servo servoY;
 
 // Pinos para o motor de passo
 // https://www.curtocircuito.com.br/blog/Categoria%20Arduino/controle-de-motor-de-passo-nema-driver-a4988
@@ -40,7 +42,7 @@ bool activateStepperMotor = true;
 
 WiFiManager wifiManager;
 
-#define API_KEY "AIzaSyAcT5oGP6ZFtJ5sHXsqxVa6DwgwxBzVexw"
+#define API_KEY "AIzaSyAcT5oGP6ZFtJ5sHXsqxVa6DwgwxBzVexw" 
 #define DATABASE_URL "remotecamera-6f583-default-rtdb.firebaseio.com"
 #define DATABASE_SECRET "zC7bJfF0iGMQ1IPKq5bYj2WOrAx9UF9j9ghzaoTq"
 
@@ -60,8 +62,11 @@ String horizontalPercentagePath;
 String testAlivePath;
 String directionPath;
 
-int currentPercentage = 0;
-int horizontalPercentage = 0;
+int currentPercentageX = 0;
+int currentPercentageY = 0;
+float horizontalPercentage = 0.0;
+
+float horizontalPercentageIncrement = 1.0;
 
 int rightDir = 0;
 int leftDir  = 0;
@@ -142,8 +147,8 @@ void gen_random(char *s, size_t len) {
   s[len] = 0;
 }
 
-void step(bool stop, bool dir){
-  if(stop == true || digitalRead(endSwitchLeftPin) || digitalRead(endSwitchRightPin)){
+void step(bool dir){
+  if(digitalRead(endSwitchLeftPin) || digitalRead(endSwitchRightPin)){
     stepMillis = millis();
     return;
   }
@@ -170,7 +175,8 @@ void setup() {
   Serial.println();
   
   /* Setup servo motors */
-  servo1.attach(servoPin);
+  servoX.attach(servoXPin);
+  servoY.attach(servoYPin);
 
   // wifi state led
   pinMode(26, OUTPUT);
@@ -255,6 +261,8 @@ void setup() {
 // 0 - nothing
 // 1 - create new camera code
 // 2 - wait for new user on connectedWith
+// 4 - prepare the direction stream
+// 5 - calibrate stepper motor
 // 3 - listen for direction and respond to testAlive changes
 int state = 1;
 
@@ -376,11 +384,40 @@ void loop() {
     } else if(state == 4){
       if (Firebase.beginStream(fbdo, directionPath.c_str())){
         Firebase.endStream(streamConnectedWith);
-        state = 3;
+        state = 5;
       }else {
         Serial.printf("fbdo begin error, %s\n\r", fbdo.errorReason().c_str());
       }
+    }else if(state == 5){
+        bool isAtBeginning = false;
 
+        //go to the beginning of the trail 
+        while(isAtBeginning == false){
+          isAtBeginning = digitalRead(endSwitchLeftPin);
+          step(LEFT);
+        }
+
+        bool isAtEnd = false;
+        int totalSteps = 0;
+
+        //go to the end of the trail, counting how many steps were taken  
+        while(isAtEnd == false){
+          isAtEnd = digitalRead(endSwitchRightPin);
+          step(RIGHT);
+          totalSteps++;
+        }
+
+        horizontalPercentage = 100;
+        horizontalPercentageIncrement = 100.0/totalSteps;
+
+        // go to the middle of the trail
+        while(horizontalPercentage <= 50){
+          step(LEFT);
+          horizontalPercentage-=horizontalPercentageIncrement;
+        }
+
+
+        state = 3;
     }else if (state == 3){
 
       if (!Firebase.readStream(fbdo))
@@ -509,18 +546,18 @@ void loop() {
         updateMillis = millis();
         /* if (Firebase.getInt(fbdo, currentPercentagePath.c_str())) { */
         bool shouldResetTestAliveMillis = false;
-        // current percentage
-        if(rightDir == 1 && currentPercentage+1 <= 100){
-          currentPercentage+=1;
+        // current percentage x
+        if(rightDir == 1 && currentPercentageX+1 <= 100){
+          currentPercentageX+=1;
         }
-        if(leftDir == 1 && currentPercentage-1 >= 0){
-          currentPercentage-=1;
+        if(leftDir == 1 && currentPercentageX-1 >= 0){
+          currentPercentageX-=1;
         }
 
         if(leftDir == 1 || rightDir == 1){
-          if (Firebase.setInt(streamTestAlive, currentPercentagePath.c_str(), currentPercentage)) {
+          if (Firebase.setInt(streamTestAlive, currentPercentagePath.c_str(), currentPercentageX)) {
             Serial.print(currentPercentagePath + " --> ");
-            Serial.println(currentPercentage);
+            Serial.println(currentPercentageX);
             shouldResetTestAliveMillis = true;
           }else{
             Serial.println(streamTestAlive.errorReason());
@@ -528,14 +565,22 @@ void loop() {
           }
         }
 
+        // current percentage y
+        if(upDir == 1 && currentPercentageY+1 <= 100){
+          currentPercentageY+=1;
+        }
+        if(downDir == 1 && currentPercentageY-1 >= 0){
+          currentPercentageY-=1;
+        }
+
         // horizontal percentage
         if(horizontalRightDir == 1 && horizontalPercentage+1 <= 100){
-          horizontalPercentage+=1;
+          horizontalPercentage+=horizontalPercentageIncrement;
           currentDirection = RIGHT;
           activateStepperMotor = true;
         }
         if(horizontalLeftDir == 1 && horizontalPercentage-1 >= 0){
-          horizontalPercentage-=1;
+          horizontalPercentage-=horizontalPercentageIncrement;
           currentDirection = LEFT;
           activateStepperMotor = true;
         }
@@ -545,7 +590,7 @@ void loop() {
         }
 
         if(horizontalLeftDir == 1 || horizontalRightDir == 1){
-          if (Firebase.setInt(streamTestAlive, horizontalPercentagePath.c_str(), horizontalPercentage)) {
+          if (Firebase.setInt(streamTestAlive, horizontalPercentagePath.c_str(), (int)(horizontalPercentage))) {
             Serial.print(horizontalPercentagePath + " --> ");
             Serial.println(horizontalPercentage);
             shouldResetTestAliveMillis = true;
@@ -561,8 +606,10 @@ void loop() {
 
       }
 
-      servo1.write((int)(currentPercentage*1.8));
-      step(!activateStepperMotor, currentDirection);
+      servoX.write((int)(currentPercentageX*1.8));
+      servoY.write((int)(currentPercentageY*1.8));
+      if(activateStepperMotor)
+        step(currentDirection);
     }
 
 
