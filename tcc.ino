@@ -384,7 +384,7 @@ void loop() {
     } else if(state == 4){
       if (Firebase.beginStream(fbdo, directionPath.c_str())){
         Firebase.endStream(streamConnectedWith);
-        state = 5;
+        state = 3;
       }else {
         Serial.printf("fbdo begin error, %s\n\r", fbdo.errorReason().c_str());
       }
@@ -476,10 +476,13 @@ void loop() {
           Serial.println("-------------------------------");
           Serial.println(rawitems);
 
-          // 1 0 0 0 -- up
-          // 0 1 0 0 -- right
-          // 0 0 1 0 -- left
-          // 0 0 0 1 -- down
+          // 0 1 2 3 4 5
+          // 1 0 0 0 0 0 -- up
+          // 0 1 0 0 0 0 -- right
+          // 0 0 1 0 0 0 -- left
+          // 0 0 0 1 0 0 -- down
+          // 0 0 0 0 1 0 -- horizontal right
+          // 0 0 0 0 0 1 -- horizontal left
 
           rightDir = 0;
           leftDir = 0;
@@ -519,58 +522,48 @@ void loop() {
             /* } */
           /* } */
           Serial.println();
-          /*for (size_t i = 0; i < direction.size(); i++)*/
-          /*{*/
-          /*direction.get(result, i);*/
-          /*if (result.typeNum == FirebaseJson::JSON_STRING)*/
-          /*Serial.printf("Array index %d, String Val: %s\n", i, result.to<String>().c_str());*/
-          /*else if (result.typeNum == FirebaseJson::JSON_INT)*/
-          /*Serial.printf("Array index %d, Int Val: %d\n", i, result.to<int>());*/
-          /*else if (result.typeNum == FirebaseJson::JSON_FLOAT)*/
-          /*Serial.printf("Array index %d, Float Val: %f\n", i, result.to<float>());*/
-          /*else if (result.typeNum == FirebaseJson::JSON_DOUBLE)*/
-          /*Serial.printf("Array index %d, Double Val: %f\n", i, result.to<double>());*/
-          /*else if (result.typeNum == FirebaseJson::JSON_BOOL)*/
-          /*Serial.printf("Array index %d, Bool Val: %d\n", i, result.to<bool>());*/
-          /*else if (result.typeNum == FirebaseJson::JSON_OBJECT)*/
-          /*Serial.printf("Array index %d, Object Val: %s\n", i, result.to<String>().c_str());*/
-          /*else if (result.typeNum == FirebaseJson::JSON_ARRAY)*/
-          /*Serial.printf("Array index %d, Array Val: %s\n", i, result.to<String>().c_str());*/
-          /*else if (result.typeNum == FirebaseJson::JSON_NULL)*/
-          /*Serial.printf("Array index %d, Null Val: %s\n", i, result.to<String>().c_str());*/
-          /*}*/
         }
       }
 
-      if(millis() - updateMillis >= 200){
+      if(millis() - updateMillis >= 50){
         updateMillis = millis();
         /* if (Firebase.getInt(fbdo, currentPercentagePath.c_str())) { */
-        bool shouldResetTestAliveMillis = false;
         // current percentage x
-        if(rightDir == 1 && currentPercentageX+1 <= 100){
-          currentPercentageX+=1;
-        }
-        if(leftDir == 1 && currentPercentageX-1 >= 0){
-          currentPercentageX-=1;
-        }
-
-        if(leftDir == 1 || rightDir == 1){
-          if (Firebase.setInt(streamTestAlive, currentPercentagePath.c_str(), currentPercentageX)) {
-            Serial.print(currentPercentagePath + " --> ");
-            Serial.println(currentPercentageX);
-            shouldResetTestAliveMillis = true;
+        if(rightDir == 1){
+          if(currentPercentageX+1 <= 100){
+            currentPercentageX+=1;
           }else{
-            Serial.println(streamTestAlive.errorReason());
-            Serial.println("\r");
+            currentPercentageX=100;
+          }
+        }
+        if(leftDir == 1){
+          if(currentPercentageX-1 >= 0){
+            currentPercentageX-=1;
+          }else{
+            currentPercentageX=0;
           }
         }
 
-        // current percentage y
-        if(upDir == 1 && currentPercentageY+1 <= 100){
-          currentPercentageY+=1;
+        if((leftDir == 1 && currentPercentageX-1 >= 0) || (rightDir == 1 && currentPercentageX+1 <= 100)){
+          Firebase.setIntAsync(streamTestAlive, currentPercentagePath.c_str(), currentPercentageX);
+          Serial.print(currentPercentagePath + " --> ");
+          Serial.println(currentPercentageX);
         }
-        if(downDir == 1 && currentPercentageY-1 >= 0){
-          currentPercentageY-=1;
+
+        // current percentage y
+        if(upDir == 1){
+          if(currentPercentageY+1 <= 100){
+            currentPercentageY+=1;
+          }else{
+            currentPercentageY=100;
+          }
+        }
+        if(downDir == 1){
+          if(currentPercentageY-1 >= 0){
+            currentPercentageY-=1;
+          }else{
+            currentPercentageY=0;
+          }
         }
 
         // horizontal percentage
@@ -590,20 +583,12 @@ void loop() {
         }
 
         if(horizontalLeftDir == 1 || horizontalRightDir == 1){
-          if (Firebase.setInt(streamTestAlive, horizontalPercentagePath.c_str(), (int)(horizontalPercentage))) {
-            Serial.print(horizontalPercentagePath + " --> ");
-            Serial.println(horizontalPercentage);
-            shouldResetTestAliveMillis = true;
-          }else{
-            Serial.println(streamTestAlive.errorReason());
-            Serial.println("\r");
-          }
+          Firebase.setIntAsync(streamTestAlive, horizontalPercentagePath.c_str(), (int)(horizontalPercentage)); 
+          Serial.print(horizontalPercentagePath + " --> ");
+          Serial.println(horizontalPercentage);
         }
 
-        if(shouldResetTestAliveMillis){
-            testAliveMillis = millis();
-        }
-
+        testAliveMillis = millis();
       }
 
       servoX.write((int)(currentPercentageX*1.8));
