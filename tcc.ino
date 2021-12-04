@@ -3,15 +3,24 @@
 #include <HTTPClient.h>
 #include <WebServer.h>
 #include <WiFiManager.h>
-/* #include <addons/RTDBHelper.h> */
-/* #include <addons/TokenHelper.h> */
+
+// Configuração tela
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // Configuração do servo motor
 
 #include <Servo.h>
 
-static const int servoXPin = 13;
-static const int servoYPin = 12;
+static const int servoXPin = 12;
+static const int servoYPin = 13;
 Servo servoX;
 Servo servoY;
 
@@ -168,13 +177,35 @@ void step(bool dir){
 
 }
 
+void displayBigText(char* text){
+  display.clearDisplay();
+
+  display.setTextSize(4);
+  display.setTextColor(WHITE);
+  display.setCursor(15, 18);
+  // Display static text
+  display.println(text);
+  display.display(); 
+}
+
 void setup() {
 
 
   Serial.begin(115200);
-  Serial.println();
+  Serial.println("\n\r");
+
+
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+  delay(1000);
+  /* display.clearDisplay(); */
+  display.display();
   
   /* Setup servo motors */
+
+
   servoX.attach(servoXPin);
   servoY.attach(servoYPin);
 
@@ -315,6 +346,8 @@ void loop() {
       char codePath[] = "/cameras/codes";
       char fullCodePath[20];
 
+      displayBigText(code);
+
       Serial.printf(" --> %s\n\r", code);
       sprintf(fullCodePath, "%s/%s", codePath, code);
 
@@ -357,10 +390,10 @@ void loop() {
             connectedUid = data;
 
             if (data != "null") {
-              connectedName = fbdo.to<String>();
               /*namePath += data.c_str();*/
               Serial.println("fetching " + namePath);
               if (Firebase.getString(fbdo, namePath.c_str())) {
+                connectedName = fbdo.to<String>();
                 Serial.print("Connecting to ");
                 Serial.println(fbdo.to<String>());
 
@@ -383,6 +416,21 @@ void loop() {
       }
     } else if(state == 4){
       if (Firebase.beginStream(fbdo, directionPath.c_str())){
+        display.clearDisplay();
+        display.setTextSize(1);
+        display.setCursor(15, 15);
+        display.println("Conectado com ");
+        display.setCursor(15, 30);
+        int nameFontSize = 3;
+        if(connectedName.length() > 6){
+          nameFontSize = 2;
+        }else if(connectedName.length() > 15){
+          nameFontSize = 1;
+        }
+
+        display.setTextSize(nameFontSize);
+        display.print(connectedName);
+        display.display();
         Firebase.endStream(streamConnectedWith);
         state = 3;
       }else {
