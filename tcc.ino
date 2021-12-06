@@ -17,7 +17,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // Configuração do servo motor
 
-#include <Servo.h>
+#include <ESP32_Servo.h>
 
 static const int servoXPin = 12;
 static const int servoYPin = 13;
@@ -86,6 +86,7 @@ int horizontalLeftDir  = 0;
 
 unsigned long updateMillis = 0;
 unsigned long testAliveMillis = 0;
+unsigned long servoMillis = 0;
 
 bool signupOK = false;
 
@@ -205,9 +206,8 @@ void setup() {
   
   /* Setup servo motors */
 
-
-  servoX.attach(servoXPin);
-  servoY.attach(servoYPin);
+  servoX.attach(servoXPin, 550, 2350);
+  servoY.attach(servoYPin, 550, 2350);
 
   // wifi state led
   pinMode(26, OUTPUT);
@@ -422,10 +422,12 @@ void loop() {
         display.println("Conectado com ");
         display.setCursor(15, 30);
         int nameFontSize = 3;
-        if(connectedName.length() > 6){
-          nameFontSize = 2;
-        }else if(connectedName.length() > 15){
+        if(connectedName.length() > 13){
+          display.setCursor(5, 30);
           nameFontSize = 1;
+        }else if(connectedName.length() > 4){
+          display.setCursor(5, 30);
+          nameFontSize = 2;
         }
 
         display.setTextSize(nameFontSize);
@@ -573,7 +575,7 @@ void loop() {
         }
       }
 
-      if(millis() - updateMillis >= 50){
+      if(millis() - updateMillis >= 80){
         updateMillis = millis();
         /* if (Firebase.getInt(fbdo, currentPercentagePath.c_str())) { */
         // current percentage x
@@ -639,8 +641,12 @@ void loop() {
         testAliveMillis = millis();
       }
 
-      servoX.write((int)(currentPercentageX*1.8));
-      servoY.write((int)(currentPercentageY*1.8));
+      if(millis() - servoMillis >= 500){
+        servoMillis = millis();
+        servoX.write((int)(currentPercentageX*1.8));
+        servoY.write((int)(currentPercentageY*1.8));
+      }
+
       if(activateStepperMotor)
         step(currentDirection);
     }
