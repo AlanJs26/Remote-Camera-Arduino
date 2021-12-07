@@ -46,6 +46,8 @@ static const int ledRedPin = 26;
 static const int ledYellowPin = 27;
 static const int ledGreenPin = 14;
 
+int memorySteps = 0;
+
 unsigned long stepMillis = 0;
 
 #define RIGHT true
@@ -164,7 +166,7 @@ void gen_random(char *s, size_t len) {
 
 void step(bool dir){
   if(digitalRead(endSwitchLeftPin) || digitalRead(endSwitchRightPin)){
-    stepMillis = micros();
+    stepMillis = millis();
     return;
   }
 
@@ -174,11 +176,11 @@ void step(bool dir){
     digitalWrite(directionPin, LOW);
   }
 
-  if(micros() - stepMillis >= 1500) digitalWrite(stepPin, HIGH);
+  if(millis() - stepMillis >= 2) digitalWrite(stepPin, HIGH);
 
-  if(micros() - stepMillis >= 3000){
+  if(millis() - stepMillis >= 4){
     digitalWrite(stepPin, LOW);
-    stepMillis = micros();
+    stepMillis = millis();
   }
 
 }
@@ -207,6 +209,7 @@ int8_t i, f, icons[NUMFLAKES][3];
 
 void matrix(uint8_t w, uint8_t h, bool isLooping) {
 
+  if(!isLooping){
   // Initialize 'snowflake' positions
   for(f=0; f< NUMFLAKES; f++) {
     icons[f][XPOS]   = random(1 - LOGO_WIDTH, display.width());
@@ -219,10 +222,11 @@ void matrix(uint8_t w, uint8_t h, bool isLooping) {
     Serial.print(F(" dy: "));
     Serial.println(icons[f][DELTAY], DEC);
   }
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-
-  if(isLooping) { // Loop forever...
+  
+  }
+  else { // Loop forever...
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
     display.clearDisplay(); // Clear the display buffer
 
     // Draw each snowflake:
@@ -409,12 +413,6 @@ void loop() {
     digitalWrite(ledGreenPin, HIGH);
 
 
-    display.clearDisplay();
-    display.setTextSize(3);
-    display.setCursor(5, 18);
-    display.print("conectado ao servidor");
-    display.display();
-
     /* Handle Stream Errors */
     if (state<=2 && !Firebase.readStream(streamConnectedWith))
       Serial.printf("streamConnectedWith read error, %s\n\n", streamConnectedWith.errorReason().c_str());
@@ -518,6 +516,7 @@ void loop() {
       }
     } else if(state == 4){
       if (Firebase.beginStream(fbdo, directionPath.c_str())){
+        digitalWrite(ledGreenPin, HIGH);
         display.clearDisplay();
         display.setTextSize(1);
         display.setCursor(15, 15);
@@ -536,11 +535,12 @@ void loop() {
         display.print(connectedName);
         display.display();
         Firebase.endStream(streamConnectedWith);
-        state = 3;
+        state = 5;
       }else {
         Serial.printf("fbdo begin error, %s\n\r", fbdo.errorReason().c_str());
       }
     }else if(state == 5){
+        Serial.println("Calibrando motor - 1");
 
         bool isAtBeginning = false;
         //go to the beginning of the trail 
@@ -548,6 +548,8 @@ void loop() {
           isAtBeginning = digitalRead(endSwitchLeftPin);
           step(LEFT);
         }
+
+        Serial.println("Calibrando motor - 2");
 
         bool isAtEnd = false;
         int totalSteps = 0;
@@ -559,6 +561,8 @@ void loop() {
           totalSteps++;
         }
 
+        Serial.println("Calibrando motor - 3");
+
         horizontalPercentage = 100;
         horizontalPercentageIncrement = 100.0/totalSteps;
 
@@ -568,6 +572,7 @@ void loop() {
           horizontalPercentage-=horizontalPercentageIncrement;
         }
 
+        Serial.println("Motor calibrado!");
 
         state = 3;
     }else if (state == 3){
@@ -712,11 +717,13 @@ void loop() {
         // horizontal percentage
         if(horizontalRightDir == 1 && horizontalPercentage+1 <= 100){
           horizontalPercentage+=horizontalPercentageIncrement;
+          memorySteps += 1;
           currentDirection = RIGHT;
           activateStepperMotor = true;
         }
         if(horizontalLeftDir == 1 && horizontalPercentage-1 >= 0){
           horizontalPercentage-=horizontalPercentageIncrement;
+          memorySteps -= 1;
           currentDirection = LEFT;
           activateStepperMotor = true;
         }
@@ -725,7 +732,8 @@ void loop() {
           activateStepperMotor = false;
         }
 
-        if(horizontalLeftDir == 1 || horizontalRightDir == 1){
+        if((horizontalLeftDir == 1 || horizontalRightDir == 1) && memorySteps*horizontalPercentageIncrement >= 10){
+          memorySteps = 0;
           Firebase.setIntAsync(streamTestAlive, horizontalPercentagePath.c_str(), (int)(horizontalPercentage)); 
           Serial.print(horizontalPercentagePath + " --> ");
           Serial.println(horizontalPercentage);
