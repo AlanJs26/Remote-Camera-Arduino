@@ -35,11 +35,16 @@ Servo servoY;
 // o pino SLP quando em LOW ativa a função sleep de economia de energia (para o funcionamento normal, o pino precisa estar em HIGH)
 // o pino EN precisa estar em LOW para funcionar
 
-static const int directionPin = 18; // HIGH para sentido horário
-static const int stepPin = 19;
+static const int directionPin = 25; // HIGH para sentido horário
+static const int stepPin = 33;
 
 static const int endSwitchRightPin = 16;
 static const int endSwitchLeftPin = 17;
+
+
+static const int ledRedPin = 26;
+static const int ledYellowPin = 27;
+static const int ledGreenPin = 14;
 
 unsigned long stepMillis = 0;
 
@@ -159,7 +164,7 @@ void gen_random(char *s, size_t len) {
 
 void step(bool dir){
   if(digitalRead(endSwitchLeftPin) || digitalRead(endSwitchRightPin)){
-    stepMillis = millis();
+    stepMillis = micros();
     return;
   }
 
@@ -169,11 +174,11 @@ void step(bool dir){
     digitalWrite(directionPin, LOW);
   }
 
-  if(millis() - stepMillis >= 2000) digitalWrite(stepPin, HIGH);
+  if(micros() - stepMillis >= 1500) digitalWrite(stepPin, HIGH);
 
-  if(millis() - stepMillis >= 4000){
+  if(micros() - stepMillis >= 3000){
     digitalWrite(stepPin, LOW);
-    stepMillis = millis();
+    stepMillis = micros();
   }
 
 }
@@ -189,6 +194,62 @@ void displayBigText(char* text){
   display.display(); 
 }
 
+#define NUMFLAKES     20 // Number of snowflakes in the animation example
+
+#define LOGO_HEIGHT   16
+#define LOGO_WIDTH    16
+
+#define XPOS   0 // Indexes into the 'icons' array in function below
+#define YPOS   1
+#define DELTAY 2
+
+int8_t i, f, icons[NUMFLAKES][3];
+
+void matrix(uint8_t w, uint8_t h, bool isLooping) {
+
+  // Initialize 'snowflake' positions
+  for(f=0; f< NUMFLAKES; f++) {
+    icons[f][XPOS]   = random(1 - LOGO_WIDTH, display.width());
+    icons[f][YPOS]   = -LOGO_HEIGHT;
+    icons[f][DELTAY] = random(6, 15);
+    Serial.print(F("x: "));
+    Serial.print(icons[f][XPOS], DEC);
+    Serial.print(F(" y: "));
+    Serial.print(icons[f][YPOS], DEC);
+    Serial.print(F(" dy: "));
+    Serial.println(icons[f][DELTAY], DEC);
+  }
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+
+  if(isLooping) { // Loop forever...
+    display.clearDisplay(); // Clear the display buffer
+
+    // Draw each snowflake:
+    for(f=0; f< NUMFLAKES; f++) {
+      for(i=0; i<f; i++){
+        char randChar = random(96, 96+25);
+        display.setCursor(icons[f][XPOS], icons[f][YPOS]-i*10);
+        display.print(randChar);
+      }
+    }
+
+    display.display(); // Show the display buffer on the screen
+
+    // Then update coordinates of each flake...
+    for(f=0; f< NUMFLAKES; f++) {
+      icons[f][YPOS] += icons[f][DELTAY];
+      // If snowflake is off the bottom of the screen...
+      if (icons[f][YPOS] >= display.height()) {
+        // Reinitialize to a random position, just off the top
+        icons[f][XPOS]   = random(1 - LOGO_WIDTH, display.width());
+        icons[f][YPOS]   = -LOGO_HEIGHT;
+        icons[f][DELTAY] = random(6, 15);
+      }
+    }
+  }
+}
+
 void setup() {
 
 
@@ -201,8 +262,17 @@ void setup() {
     for(;;);
   }
   delay(1000);
-  /* display.clearDisplay(); */
+
+
+  matrix(LOGO_WIDTH, LOGO_HEIGHT, false);
+
+  display.clearDisplay();
+  display.setTextSize(3);
+  display.setCursor(15, 18);
+  display.print("Inicializando...");
   display.display();
+
+
   
   /* Setup servo motors */
 
@@ -210,8 +280,12 @@ void setup() {
   servoY.attach(servoYPin, 550, 2350);
 
   // wifi state led
-  pinMode(26, OUTPUT);
-  digitalWrite(26, LOW);
+  pinMode(ledRedPin, OUTPUT);
+  pinMode(ledYellowPin, OUTPUT);
+  pinMode(ledGreenPin, OUTPUT);
+  digitalWrite(ledRedPin, HIGH);
+  digitalWrite(ledYellowPin, LOW);
+  digitalWrite(ledGreenPin, LOW);
 
   /*Directions pins*/
   /* pinMode(16, OUTPUT); */
@@ -287,6 +361,14 @@ void setup() {
     ESP.restart();
   }
   Firebase.begin(&config, &auth);
+
+
+  display.clearDisplay();
+  display.setTextSize(3);
+  display.setCursor(15, 18);
+  display.print("Conectado!");
+  display.display();
+
 }
 
 // 0 - nothing
@@ -301,17 +383,37 @@ void loop() {
 
   // connected to wifi but not connected to firebase
   if (WiFi.status() == WL_CONNECTED && !signupOK) {
-    digitalWrite(26, LOW);
+    digitalWrite(ledRedPin, LOW);
+    digitalWrite(ledGreenPin, LOW);
+
+    matrix(LOGO_WIDTH, LOGO_HEIGHT, true);
+
+    digitalWrite(ledYellowPin, LOW);
     delay(100);
-    digitalWrite(26, HIGH);
+    digitalWrite(ledYellowPin, HIGH);
     delay(100);
-    digitalWrite(26, LOW);
+    matrix(LOGO_WIDTH, LOGO_HEIGHT, true);
+    digitalWrite(ledYellowPin, LOW);
     delay(100);
-    digitalWrite(26, HIGH);
-    delay(600);
+    digitalWrite(ledYellowPin, HIGH);
+
+    delay(200);
+    matrix(LOGO_WIDTH, LOGO_HEIGHT, true);
+    delay(200);
+    matrix(LOGO_WIDTH, LOGO_HEIGHT, true);
+    delay(200);
     // connected to wifi and firebase
   } else if (WiFi.status() == WL_CONNECTED && signupOK && Firebase.ready()) {
-    digitalWrite(26, HIGH);
+    digitalWrite(ledYellowPin, LOW);
+    digitalWrite(ledRedPin, LOW);
+    digitalWrite(ledGreenPin, HIGH);
+
+
+    display.clearDisplay();
+    display.setTextSize(3);
+    display.setCursor(5, 18);
+    display.print("conectado ao servidor");
+    display.display();
 
     /* Handle Stream Errors */
     if (state<=2 && !Firebase.readStream(streamConnectedWith))
@@ -439,8 +541,8 @@ void loop() {
         Serial.printf("fbdo begin error, %s\n\r", fbdo.errorReason().c_str());
       }
     }else if(state == 5){
-        bool isAtBeginning = false;
 
+        bool isAtBeginning = false;
         //go to the beginning of the trail 
         while(isAtBeginning == false){
           isAtBeginning = digitalRead(endSwitchLeftPin);
@@ -562,15 +664,6 @@ void loop() {
             horizontalLeftDir = 1;
           }
 
-          /* for(int i = 0; i<4; i++){ */
-            /* [>Serial.printf("%i ",directions[i].to<int>());<] */
-
-            /* if(directions[i].to<int>() == 1){ */
-              /* digitalWrite(16+i, HIGH); */
-            /* }else{ */
-              /* digitalWrite(16+i, LOW); */
-            /* } */
-          /* } */
           Serial.println();
         }
       }
@@ -654,7 +747,9 @@ void loop() {
 
     // not connected at all
   } else if (WiFi.status() != WL_CONNECTED) {
-    digitalWrite(26, LOW);
+    digitalWrite(ledRedPin, HIGH);
+    digitalWrite(ledGreenPin, LOW);
+    digitalWrite(ledYellowPin, LOW);
     wifiManager.autoConnect();
   } else {
     delay(300);
