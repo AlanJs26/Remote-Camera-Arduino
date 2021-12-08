@@ -20,7 +20,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #include <ESP32_Servo.h>
 
 static const int servoXPin = 12;
-static const int servoYPin = 13;
+static const int servoYPin = 18;
 Servo servoX;
 Servo servoY;
 
@@ -37,6 +37,8 @@ Servo servoY;
 
 static const int directionPin = 25; // HIGH para sentido horário
 static const int stepPin = 33;
+
+static const int resetPin = 15;
 
 static const int endSwitchRightPin = 16;
 static const int endSwitchLeftPin = 17;
@@ -78,8 +80,8 @@ String horizontalPercentagePath;
 String testAlivePath;
 String directionPath;
 
-int currentPercentageX = 0;
-int currentPercentageY = 0;
+int currentPercentageX = 50;
+int currentPercentageY = 50;
 float horizontalPercentage = 0.0;
 
 float horizontalPercentageIncrement = 1.0;
@@ -165,7 +167,7 @@ void gen_random(char *s, size_t len) {
 }
 
 bool step(bool dir){
-  if(digitalRead(endSwitchLeftPin) || digitalRead(endSwitchRightPin)){
+  if((digitalRead(endSwitchLeftPin) && dir == LEFT) || (digitalRead(endSwitchRightPin) && dir == RIGHT)){
     stepMillis = millis();
     return false;
   }
@@ -177,14 +179,14 @@ bool step(bool dir){
   }
 
 
-  if(millis() - stepMillis >= 4){
+  if(millis() - stepMillis >= 8){
     digitalWrite(stepPin, LOW);
     stepMillis = millis();
     /* Serial.println("."); */
     return true;
   }
 
-  if(millis() - stepMillis >= 2) digitalWrite(stepPin, HIGH);
+  if(millis() - stepMillis >= 4) digitalWrite(stepPin, HIGH);
   return false;
 
 }
@@ -392,6 +394,10 @@ void setup() {
 int state = 1;
 
 void loop() {
+
+  if(digitalRead(resetPin) == HIGH){
+    ESP.restart();
+  }
 
   // connected to wifi but not connected to firebase
   if (WiFi.status() == WL_CONNECTED && !signupOK) {
@@ -709,17 +715,17 @@ void loop() {
         /* if (Firebase.getInt(fbdo, currentPercentagePath.c_str())) { */
         // current percentage x
         if(rightDir == 1){
-          if(currentPercentageX+1 <= 100){
+          if(currentPercentageX+1 <= 90){
             currentPercentageX+=1;
           }else{
             currentPercentageX=100;
           }
         }
         if(leftDir == 1){
-          if(currentPercentageX-1 >= 0){
+          if(currentPercentageX-1 >= 10){
             currentPercentageX-=1;
           }else{
-            currentPercentageX=0;
+            currentPercentageX=10;
           }
         }
 
@@ -731,18 +737,23 @@ void loop() {
 
         // current percentage y
         if(upDir == 1){
-          if(currentPercentageY+1 <= 100){
+          if(currentPercentageY+1 <= 90){
             currentPercentageY+=1;
           }else{
             currentPercentageY=100;
           }
         }
         if(downDir == 1){
-          if(currentPercentageY-1 >= 0){
+          if(currentPercentageY-1 >= 10){
             currentPercentageY-=1;
           }else{
-            currentPercentageY=0;
+            currentPercentageY=10;
           }
+        }
+
+        if((downDir == 1 && currentPercentageY-1 >= 0) || (upDir == 1 && currentPercentageY+1 <= 100)){
+          Serial.print("currentPercentageY --> ");
+          Serial.println(currentPercentageY);
         }
 
         // horizontal percentage
@@ -777,10 +788,10 @@ void loop() {
 
       }
 
-      if(millis() - servoMillis >= 500){
+      if(millis() - servoMillis >= 100){
         servoMillis = millis();
         servoX.write((int)(currentPercentageX*1.8));
-        servoY.write((int)(currentPercentageY*1.8));
+        servoY.write(100 - (int)(currentPercentageY*1.8));
       }
 
       if(activateStepperMotor)
