@@ -164,10 +164,10 @@ void gen_random(char *s, size_t len) {
   s[len] = 0;
 }
 
-void step(bool dir){
+bool step(bool dir){
   if(digitalRead(endSwitchLeftPin) || digitalRead(endSwitchRightPin)){
     stepMillis = millis();
-    return;
+    return false;
   }
 
   if(dir){
@@ -176,12 +176,16 @@ void step(bool dir){
     digitalWrite(directionPin, LOW);
   }
 
-  if(millis() - stepMillis >= 2) digitalWrite(stepPin, HIGH);
 
   if(millis() - stepMillis >= 4){
     digitalWrite(stepPin, LOW);
     stepMillis = millis();
+    /* Serial.println("."); */
+    return true;
   }
+
+  if(millis() - stepMillis >= 2) digitalWrite(stepPin, HIGH);
+  return false;
 
 }
 
@@ -270,11 +274,6 @@ void setup() {
 
   matrix(LOGO_WIDTH, LOGO_HEIGHT, false);
 
-  display.clearDisplay();
-  display.setTextSize(3);
-  display.setCursor(15, 18);
-  display.print("Inicializando...");
-  display.display();
 
 
   
@@ -325,9 +324,18 @@ void setup() {
 
   Firebase.reconnectWiFi(true);
 
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(15, 20);
+  display.println("Inicializando...");
+  display.println("Para continuar acesse a rede wifi \"Remote Camera\"");
+  display.display();
+
   Serial.println("Abertura Portal");
   if (
-      wifiManager.autoConnect("ESP32-CONFIG", "12345678")
+      wifiManager.autoConnect("Remote Camera", "")
       /*||*/
       /*wifiManager.startConfigPortal("ESP32-CONFIG", "12345678")*/
   ) { Serial.println("Conectado na Rede!!!");
@@ -411,6 +419,13 @@ void loop() {
     digitalWrite(ledYellowPin, LOW);
     digitalWrite(ledRedPin, LOW);
     digitalWrite(ledGreenPin, HIGH);
+
+
+    /* display.clearDisplay(); */
+    /* display.setTextSize(2); */
+    /* display.setCursor(3, 25); */
+    /* display.print("Conectando"); */
+    /* display.display(); */
 
 
     /* Handle Stream Errors */
@@ -507,16 +522,70 @@ void loop() {
                 currentPercentagePath = "/users/" + data + "/currentPercentage";
                 horizontalPercentagePath = "/users/" + data + "/horizontalPercentage";
                 updateReconnectValidUntil();
-                state = 4;
+                state = 3;
               }
             }
           }
 
         }
       }
-    } else if(state == 4){
+    } else if(state == 3){
       if (Firebase.beginStream(fbdo, directionPath.c_str())){
         digitalWrite(ledGreenPin, HIGH);
+        Firebase.endStream(streamConnectedWith);
+        state = 4;
+      }else {
+        Serial.printf("fbdo begin error, %s\n\r", fbdo.errorReason().c_str());
+      }
+    }else if(state == 4){
+
+        display.clearDisplay();
+        display.setTextSize(2);
+        display.setCursor(15, 18);
+        display.print("Calibrando motor");
+        display.display();
+
+        Serial.println("Calibrando motor [1/3]");
+
+        bool isAtBeginning = false;
+        //go to the beginning of the trail 
+        while(isAtBeginning == false){
+          isAtBeginning = digitalRead(endSwitchLeftPin);
+          step(LEFT);
+        }
+
+        Serial.println("Calibrando motor [2/3]");
+
+        bool isAtEnd = false;
+        int totalSteps = 0;
+
+        //go to the end of the trail, counting how many steps were taken  
+        while(isAtEnd == false){
+          if(step(RIGHT)){
+            totalSteps += 1;
+          }
+          isAtEnd = digitalRead(endSwitchRightPin);
+        }
+
+        Serial.println("Calibrando motor [3/3]");
+
+        horizontalPercentage = 100.0;
+        horizontalPercentageIncrement = 100.0/totalSteps;
+
+        // go to the middle of the trail
+        while(horizontalPercentage > 50){
+          if(step(LEFT))
+            horizontalPercentage-=horizontalPercentageIncrement;
+        }
+
+        Serial.println("Motor calibrado!");
+        Serial.print(horizontalPercentage);
+        Serial.print(" ");
+        Serial.print(horizontalPercentageIncrement);
+        Serial.print(" ");
+        Serial.println(totalSteps);
+
+
         display.clearDisplay();
         display.setTextSize(1);
         display.setCursor(15, 15);
@@ -534,48 +603,10 @@ void loop() {
         display.setTextSize(nameFontSize);
         display.print(connectedName);
         display.display();
-        Firebase.endStream(streamConnectedWith);
+
+
         state = 5;
-      }else {
-        Serial.printf("fbdo begin error, %s\n\r", fbdo.errorReason().c_str());
-      }
-    }else if(state == 5){
-        Serial.println("Calibrando motor - 1");
-
-        bool isAtBeginning = false;
-        //go to the beginning of the trail 
-        while(isAtBeginning == false){
-          isAtBeginning = digitalRead(endSwitchLeftPin);
-          step(LEFT);
-        }
-
-        Serial.println("Calibrando motor - 2");
-
-        bool isAtEnd = false;
-        int totalSteps = 0;
-
-        //go to the end of the trail, counting how many steps were taken  
-        while(isAtEnd == false){
-          isAtEnd = digitalRead(endSwitchRightPin);
-          step(RIGHT);
-          totalSteps++;
-        }
-
-        Serial.println("Calibrando motor - 3");
-
-        horizontalPercentage = 100;
-        horizontalPercentageIncrement = 100.0/totalSteps;
-
-        // go to the middle of the trail
-        while(horizontalPercentage <= 50){
-          step(LEFT);
-          horizontalPercentage-=horizontalPercentageIncrement;
-        }
-
-        Serial.println("Motor calibrado!");
-
-        state = 3;
-    }else if (state == 3){
+    }else if (state == 5){
 
       if (!Firebase.readStream(fbdo))
         Serial.printf("fbdo read error, %s\n\r", fbdo.errorReason().c_str());
@@ -717,22 +748,25 @@ void loop() {
         // horizontal percentage
         if(horizontalRightDir == 1 && horizontalPercentage+1 <= 100){
           horizontalPercentage+=horizontalPercentageIncrement;
-          memorySteps += 1;
+          memorySteps++;
           currentDirection = RIGHT;
           activateStepperMotor = true;
+          Serial.println(horizontalPercentage);
         }
         if(horizontalLeftDir == 1 && horizontalPercentage-1 >= 0){
           horizontalPercentage-=horizontalPercentageIncrement;
-          memorySteps -= 1;
+          memorySteps++;
           currentDirection = LEFT;
           activateStepperMotor = true;
+          Serial.println(horizontalPercentage);
         }
 
         if(horizontalLeftDir == 0 && horizontalRightDir == 0){
           activateStepperMotor = false;
+          memorySteps = 2;
         }
 
-        if((horizontalLeftDir == 1 || horizontalRightDir == 1) && memorySteps*horizontalPercentageIncrement >= 10){
+        if((horizontalLeftDir == 1 || horizontalRightDir == 1) && memorySteps*horizontalPercentageIncrement >= 2){
           memorySteps = 0;
           Firebase.setIntAsync(streamTestAlive, horizontalPercentagePath.c_str(), (int)(horizontalPercentage)); 
           Serial.print(horizontalPercentagePath + " --> ");
@@ -740,6 +774,7 @@ void loop() {
         }
 
         testAliveMillis = millis();
+
       }
 
       if(millis() - servoMillis >= 500){
@@ -750,15 +785,23 @@ void loop() {
 
       if(activateStepperMotor)
         step(currentDirection);
+
     }
 
 
     // not connected at all
   } else if (WiFi.status() != WL_CONNECTED) {
+
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setCursor(15, 18);
+    display.print("Desconectado");
+    display.display();
+
     digitalWrite(ledRedPin, HIGH);
     digitalWrite(ledGreenPin, LOW);
     digitalWrite(ledYellowPin, LOW);
-    wifiManager.autoConnect();
+    wifiManager.autoConnect("Remote Camera", "");
   } else {
     delay(300);
     Serial.println(Firebase.ready());
